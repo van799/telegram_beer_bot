@@ -3,7 +3,9 @@ from aiogram.filters import Command, CommandStart, StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import default_state
 from aiogram.types import Message, PhotoSize
-from database.database import user_dict
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from database.models import User
 from keyboards.keyboards import navigation_kb
 
 from lexicon.lexicon import LEXICON, LEXICON_MENU
@@ -16,7 +18,9 @@ router = Router()
 # добавлять пользователя в базу данных, если его там еще не было
 # и отправлять ему приветственное сообщение
 @router.message(CommandStart())
-async def process_start_command(message: Message):
+async def process_start_command(message: Message, session: AsyncSession):
+    session.add(User(telegram_id=1))
+    await session.commit()
     await message.answer(LEXICON_MENU[message.text], reply_markup=navigation_kb)
 
 
@@ -126,22 +130,21 @@ async def process_price(message: Message, state: FSMContext):
     await state.clear()
     await message.answer(text=LEXICON['save_beer'])
 
-
 # Этот хэндлер будет срабатывать на отправку команды "Просмотр пива"
-@router.message(F.text == LEXICON['view_beer'], StateFilter(default_state))
-async def process_view_beer(message: Message):
-    # Отправляем пользователю инофрмацию, если она есть в "базе данных"
-    if message.from_user.id in user_dict:
-        await message.answer_photo(
-            photo=user_dict[message.from_user.id]['photo_id'],
-            caption=f'Название: {user_dict[message.from_user.id]["add_name"]}\n'
-                    f'Сорт напитка: {user_dict[message.from_user.id]["model_beer"]}\n'
-                    f'отзыв: {user_dict[message.from_user.id]["comment"]}\n'
-                    f'Рейтинг: {user_dict[message.from_user.id]["rating"]}\n'
-                    f'Цена: {user_dict[message.from_user.id]["price"]}'
-        )
-    else:
-        # Если анкеты пользователя в базе нет - предлагаем заполнить
-        await message.answer(
-            text=LEXICON['not_beer']
-        )
+# @router.message(F.text == LEXICON['view_beer'], StateFilter(default_state))
+# async def process_view_beer(message: Message):
+#     # Отправляем пользователю инофрмацию, если она есть в "базе данных"
+#     if message.from_user.id in user_dict:
+#         await message.answer_photo(
+#             photo=user_dict[message.from_user.id]['photo_id'],
+#             caption=f'Название: {user_dict[message.from_user.id]["add_name"]}\n'
+#                     f'Сорт напитка: {user_dict[message.from_user.id]["model_beer"]}\n'
+#                     f'отзыв: {user_dict[message.from_user.id]["comment"]}\n'
+#                     f'Рейтинг: {user_dict[message.from_user.id]["rating"]}\n'
+#                     f'Цена: {user_dict[message.from_user.id]["price"]}'
+#         )
+#     else:
+#         # Если анкеты пользователя в базе нет - предлагаем заполнить
+#         await message.answer(
+#             text=LEXICON['not_beer']
+#         )
