@@ -22,13 +22,9 @@ router = Router()
 async def process_start_command(message: Message, session: AsyncSession):
     repository_user = RepositoryUser(session)
     user = User()
-    user.telegram_id = message.from_user.id
-    await repository_user.add(user)
-    result = await repository_user.get_by_telegram_id(user, message.from_user.id)
-    print(result)
-    # if await repository_user.get_by_telegram_id(message.from_user.id) is not None:
-    #     user.telegram_id = message.from_user.id
-    #     await repository_user.add(user)
+    if await repository_user.get_by_telegram_id(message.from_user.id) is None:
+        user.telegram_id = message.from_user.id
+        await repository_user.add(user)
     await message.answer(LEXICON_MENU[message.text], reply_markup=navigation_kb)
 
 

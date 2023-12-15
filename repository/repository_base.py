@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, delete, update
 
 from database.models import Base
 
@@ -15,18 +16,16 @@ class RepositoryBase(ABC):
         self.session = session
         self.repository_type = repository_type
 
-    @abstractmethod
-    def add(self, model):
-        pass
+    async def add(self, model):
+        self.session.add(model)
+        await self.session.commit()
 
-    @abstractmethod
-    def get_by_id(self, id):
-        pass
+    async def get_by_id(self, id):
+        result = await self.session.get(self.repository_type, id)
+        return result
 
-    @abstractmethod
-    def update_by_id(self):
-        pass
+    async def update_by_id(self, id):
+        await self.session.scalar(update(self.repository_type).filter(self.repository_type.id == id))
 
-    @abstractmethod
-    def delete(self):
-        pass
+    async def delete(self, id):
+        await self.session.scalar(delete(self.repository_type).filter(self.repository_type.id == id))
