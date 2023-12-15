@@ -24,8 +24,7 @@ class RepositoryBase(ABC):
         result = await self.session.get(self.repository_type, id)
         return result
 
-    async def update_by_id(self, id):
-        await self.session.scalar(update(self.repository_type).filter(self.repository_type.id == id))
+    async def delete_by_id(self, id):
+        await self.session.execute(delete(self.repository_type).where(self.repository_type.id == id))
+        await self.session.commit()
 
-    async def delete(self, id):
-        await self.session.scalar(delete(self.repository_type).filter(self.repository_type.id == id))
