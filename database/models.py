@@ -9,7 +9,7 @@ class Base(DeclarativeBase):
 class User(Base):
     __tablename__ = "users"
     id: Mapped[int] = mapped_column(primary_key=True)
-    telegram_id: Mapped[int] = mapped_column(String(64))
+    telegram_id: Mapped[int] = mapped_column()
     beer: Mapped["Beer"] = relationship(back_populates='user', uselist=False)
 
 

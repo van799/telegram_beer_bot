@@ -10,7 +10,7 @@ class TestRepositoryBase(unittest.IsolatedAsyncioTestCase):
     async def test_repository_add(self):
         test_database = TestDatabase()
         test_common = TestCommon()
-        test_common.test_str = 'test'
+        test_common.test_field = 'test'
 
         await test_database.create_session()
 
@@ -21,13 +21,13 @@ class TestRepositoryBase(unittest.IsolatedAsyncioTestCase):
         async with test_database.async_session() as session:
             result = await session.get(TestCommon, 1)
 
-        self.assertEqual(result.test_str, test_common.test_str)
+        self.assertEqual(result.test_field, test_common.test_field)
         test_database.remove_database_file()
 
     async def test_repository_get_by_id(self):
         test_database = TestDatabase()
         test_common = TestCommon()
-        test_common.test_str = 'test'
+        test_common.test_field = 'test'
         test_id = 1
         await test_database.create_session()
 
@@ -39,13 +39,13 @@ class TestRepositoryBase(unittest.IsolatedAsyncioTestCase):
             repository = TestRepository(session)
             result = await repository.get_by_id(test_id)
 
-        self.assertEqual(result.test_str, test_common.test_str)
+        self.assertEqual(result.test_field, test_common.test_field)
         test_database.remove_database_file()
 
     async def test_repository_delete_by_id(self):
         test_database = TestDatabase()
         test_common = TestCommon()
-        test_common.test_str = 'test'
+        test_common.test_field = 'test'
         test_id = 1
         await test_database.create_session()
 

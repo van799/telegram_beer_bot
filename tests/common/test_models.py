@@ -1,12 +1,12 @@
 from sqlalchemy import String
 from sqlalchemy.orm import mapped_column, Mapped
 
-from database.models import DeclarativeBase
+from database.models import DeclarativeBase, Base
 
 
 # создаем тестмодель, объекты которой будут храниться в бд
-class Base(DeclarativeBase):
-    pass
+# class Base(DeclarativeBase):
+#     pass
 
 
 class TestCommon(Base):
@@ -15,4 +15,4 @@ class TestCommon(Base):
     """
     __tablename__ = "test"
     id: Mapped[int] = mapped_column(primary_key=True)
-    test_str: Mapped[int] = mapped_column(String)
+    test_field: Mapped[int] = mapped_column()

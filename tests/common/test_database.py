@@ -1,11 +1,13 @@
-import asyncio
 import os
 import time
 
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 
-from tests.common.test_models import Base
+from database.models import Base
+
+
+# from tests.common.test_models import Base
 
 
 class TestDatabase:
