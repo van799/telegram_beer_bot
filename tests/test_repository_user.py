@@ -3,7 +3,6 @@ import unittest
 from database.models import User
 from repository.repository_user import RepositoryUser
 from tests.common.test_database import TestDatabase
-from tests.common.test_models import TestCommon
 
 
 class TestRepositoryUser(unittest.IsolatedAsyncioTestCase):

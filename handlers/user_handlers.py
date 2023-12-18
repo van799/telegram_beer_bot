@@ -5,10 +5,11 @@ from aiogram.fsm.state import default_state
 from aiogram.types import Message, PhotoSize
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from database.models import User
+from database.models import User, Beer
 from keyboards.keyboards import navigation_kb
 
 from lexicon.lexicon import LEXICON, LEXICON_MENU
+from repository.repository_beer import RepositoryBeer
 from repository.repository_user import RepositoryUser
 from state_machine.add_beer import FsmBeerForm
 
@@ -90,12 +91,12 @@ async def process_upload_photo(message: Message,
         photo_unique_id=largest_photo.file_unique_id,
         photo_id=largest_photo.file_id
     )
-    await message.answer(text=LEXICON['model_beer'])
+    await message.answer(text=LEXICON['sort_beer'])
     # Устанавливаем состояние ожидания выбора образования
-    await state.set_state(FsmBeerForm.model_beer)
+    await state.set_state(FsmBeerForm.sort_beer)
 
 
-@router.message(StateFilter(FsmBeerForm.model_beer))
+@router.message(StateFilter(FsmBeerForm.sort_beer))
 async def process_model_beer(message: Message, state: FSMContext):
     # Cохраняем введенное имя в хранилище по ключу "name"
     await state.update_data(model_beer=message.text)
@@ -123,32 +124,52 @@ async def process_rating(message: Message, state: FSMContext):
 
 
 @router.message(StateFilter(FsmBeerForm.price))
-async def process_price(message: Message, state: FSMContext):
+async def process_price(message: Message, state: FSMContext, session: AsyncSession):
     # Cохраняем введенное имя в хранилище по ключу "name"
     await state.update_data(price=message.text)
-
     await state.set_state(FsmBeerForm.rating)
 
-    user_dict[message.from_user.id] = await state.get_data()
+    repository_user = RepositoryUser(session)
+    repository_beer = RepositoryBeer(session)
+
+    beer = Beer()
+    user_result = await repository_user.get_by_telegram_id(message.from_user.id)
+
+    beer.user_id = user_result.id
+    data = await state.get_data()
+    beer.price = data['price']
+    beer.photo_id = data['photo_id']
+    beer.rating = data['rating']
+    beer.name = data['add_name']
+    beer.comment = data['comment']
+    beer.sort_beer_id = 1
+
+    await repository_beer.add(beer)
+
     # Завершаем машину состояний
     await state.clear()
     await message.answer(text=LEXICON['save_beer'])
 
+
 # Этот хэндлер будет срабатывать на отправку команды "Просмотр пива"
-# @router.message(F.text == LEXICON['view_beer'], StateFilter(default_state))
-# async def process_view_beer(message: Message):
-#     # Отправляем пользователю инофрмацию, если она есть в "базе данных"
-#     if message.from_user.id in user_dict:
-#         await message.answer_photo(
-#             photo=user_dict[message.from_user.id]['photo_id'],
-#             caption=f'Название: {user_dict[message.from_user.id]["add_name"]}\n'
-#                     f'Сорт напитка: {user_dict[message.from_user.id]["model_beer"]}\n'
-#                     f'отзыв: {user_dict[message.from_user.id]["comment"]}\n'
-#                     f'Рейтинг: {user_dict[message.from_user.id]["rating"]}\n'
-#                     f'Цена: {user_dict[message.from_user.id]["price"]}'
-#         )
-#     else:
-#         # Если анкеты пользователя в базе нет - предлагаем заполнить
-#         await message.answer(
-#             text=LEXICON['not_beer']
-#         )
+@router.message(F.text == LEXICON['view_beer'], StateFilter(default_state))
+async def process_view_beer(message: Message, session: AsyncSession):
+    # Отправляем пользователю инофрмацию, если она есть в "базе данных"
+    repository_beer = RepositoryBeer(session)
+    result_beers = await repository_beer.get_all()
+
+    if not result_beers:
+        # Если анкеты пользователя в базе нет - предлагаем заполнить
+        await message.answer(
+            text=LEXICON['not_beer']
+        )
+    else:
+        for beer in result_beers:
+            await message.answer_photo(
+                photo=beer.photo_id,
+                caption=f'Название: {beer.name}\n'
+                        f'Сорт напитка: {beer.sort_beer_id}\n'
+                        f'отзыв: {beer.comment}\n'
+                        f'Рейтинг: {beer.rating}\n'
+                        f'Цена: {beer.price}'
+            )
