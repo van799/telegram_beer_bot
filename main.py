@@ -4,7 +4,7 @@ import logging
 from aiogram import Bot, Dispatcher
 from aiogram.utils.callback_answer import CallbackAnswerMiddleware
 
-from config_data.config import Config, load_config
+from config_data.config import app_settings
 from database.database import Database
 from handlers import other_handlers, user_handlers
 from keyboards.main_menu import set_main_menu
@@ -18,18 +18,15 @@ logger = logging.getLogger(__name__)
 async def main():
     # Конфигурируем логирование
     logging.basicConfig(
-        level=logging.INFO,
+        level=app_settings.logger,
         format='%(filename)s:%(lineno)d #%(levelname)-8s '
                '[%(asctime)s] - %(name)s - %(message)s')
 
     # Выводим в консоль информацию о начале запуска бота
     logger.info('Starting bot')
 
-    # Загружаем конфиг в переменную config
-    config: Config = load_config()
-
     # Инициализируем бот и диспетчер
-    bot = Bot(token="6814148393:AAE0qki3Hz5L7DPEUtSI8ssCp7KIeqoR8xA",
+    bot = Bot(token=app_settings.bot_token,
               parse_mode='HTML')
     dp = Dispatcher()
 
