@@ -153,30 +153,6 @@ async def process_price(message: Message, state: FSMContext, session: AsyncSessi
     await message.answer(text=LEXICON['save_beer'])
 
 
-#
-# # Этот хэндлер будет срабатывать на отправку команды "Просмотр пива"
-# @router.message(F.text == LEXICON['view_beer'], StateFilter(default_state))
-# async def process_view_beer(message: Message, session: AsyncSession):
-#     # Отправляем пользователю инофрмацию, если она есть в "базе данных"
-#     repository_beer = RepositoryBeer(session)
-#     result_beers = await repository_beer.get_all()
-#
-#     if not result_beers:
-#         # Если анкеты пользователя в базе нет - предлагаем заполнить
-#         await message.answer(
-#             text=LEXICON['not_beer']
-#         )
-#     else:
-#         for beer in result_beers:
-#             await message.answer_photo(
-#                 photo=beer.photo_id,
-#                 caption=f'Название: {beer.name}\n'
-#                         f'Сорт напитка: {beer.sort_beer_id}\n'
-#                         f'отзыв: {beer.comment}\n'
-#                         f'Рейтинг: {beer.rating}\n'
-#                         f'Цена: {beer.price}'
-#             )
-
 @router.message(F.text == LEXICON['view_beer'], StateFilter(default_state))
 async def process_view_beer(message: Message, session: AsyncSession):
     # Отправляем пользователю инофрмацию, если она есть в "базе данных"
@@ -211,5 +187,4 @@ async def process_beer_press(callback: CallbackQuery, session: AsyncSession):
                 f'Рейтинг: {beer.rating}\n'
                 f'Цена: {beer.price}'
     )
-
 

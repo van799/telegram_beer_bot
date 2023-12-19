@@ -17,7 +17,7 @@ def create_beers_keyboard(args: dict) -> InlineKeyboardMarkup:
     kb_builder.row(
         InlineKeyboardButton(
             text=LEXICON['edit'],
-            callback_data='edit_bookmarks'
+            callback_data='edit_beer'
         ),
         InlineKeyboardButton(
             text=LEXICON['cancel'],
@@ -26,3 +26,4 @@ def create_beers_keyboard(args: dict) -> InlineKeyboardMarkup:
         width=2
     )
     return kb_builder.as_markup()
+
