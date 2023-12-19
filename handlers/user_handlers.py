@@ -2,10 +2,12 @@ from aiogram import Router, F
 from aiogram.filters import Command, CommandStart, StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import default_state
-from aiogram.types import Message, PhotoSize
+from aiogram.types import Message, PhotoSize, CallbackQuery
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from database.models import User, Beer
+from filters.filters import IsDigitCallbackData
+from keyboards.inline_keyboards import create_beers_keyboard
 from keyboards.keyboards import navigation_kb
 
 from lexicon.lexicon import LEXICON, LEXICON_MENU
@@ -151,25 +153,63 @@ async def process_price(message: Message, state: FSMContext, session: AsyncSessi
     await message.answer(text=LEXICON['save_beer'])
 
 
-# Этот хэндлер будет срабатывать на отправку команды "Просмотр пива"
+#
+# # Этот хэндлер будет срабатывать на отправку команды "Просмотр пива"
+# @router.message(F.text == LEXICON['view_beer'], StateFilter(default_state))
+# async def process_view_beer(message: Message, session: AsyncSession):
+#     # Отправляем пользователю инофрмацию, если она есть в "базе данных"
+#     repository_beer = RepositoryBeer(session)
+#     result_beers = await repository_beer.get_all()
+#
+#     if not result_beers:
+#         # Если анкеты пользователя в базе нет - предлагаем заполнить
+#         await message.answer(
+#             text=LEXICON['not_beer']
+#         )
+#     else:
+#         for beer in result_beers:
+#             await message.answer_photo(
+#                 photo=beer.photo_id,
+#                 caption=f'Название: {beer.name}\n'
+#                         f'Сорт напитка: {beer.sort_beer_id}\n'
+#                         f'отзыв: {beer.comment}\n'
+#                         f'Рейтинг: {beer.rating}\n'
+#                         f'Цена: {beer.price}'
+#             )
+
 @router.message(F.text == LEXICON['view_beer'], StateFilter(default_state))
 async def process_view_beer(message: Message, session: AsyncSession):
     # Отправляем пользователю инофрмацию, если она есть в "базе данных"
     repository_beer = RepositoryBeer(session)
     result_beers = await repository_beer.get_all()
-
     if not result_beers:
         # Если анкеты пользователя в базе нет - предлагаем заполнить
         await message.answer(
             text=LEXICON['not_beer']
         )
     else:
+        name_beers = {}
         for beer in result_beers:
-            await message.answer_photo(
-                photo=beer.photo_id,
-                caption=f'Название: {beer.name}\n'
-                        f'Сорт напитка: {beer.sort_beer_id}\n'
-                        f'отзыв: {beer.comment}\n'
-                        f'Рейтинг: {beer.rating}\n'
-                        f'Цена: {beer.price}'
-            )
+            beer_name = f'{beer.name}. Цена: {beer.price} руб.'
+            name_beers.update({beer.id: beer_name})
+        await message.answer(
+            text=LEXICON['list_beer'],
+            reply_markup=create_beers_keyboard(name_beers))
+
+
+# Этот хэндлер будет срабатывать на нажатие инлайн-кнопки
+# с названием напитка из списка
+@router.callback_query(IsDigitCallbackData())
+async def process_beer_press(callback: CallbackQuery, session: AsyncSession):
+    repository_beer = RepositoryBeer(session)
+    beer = await repository_beer.get_by_id(int(callback.data))
+    await callback.message.answer_photo(
+        photo=beer.photo_id,
+        caption=f'Название: {beer.name}\n'
+                f'Сорт напитка: {beer.sort_beer_id}\n'
+                f'отзыв: {beer.comment}\n'
+                f'Рейтинг: {beer.rating}\n'
+                f'Цена: {beer.price}'
+    )
+
+
