@@ -6,8 +6,8 @@ from aiogram.types import Message, PhotoSize, CallbackQuery
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from database.models import User, Beer
-from filters.filters import IsDigitCallbackData
-from keyboards.inline_keyboards import create_beers_keyboard
+from filters.filters import IsDigitCallbackData, IsDelBookmarkCallbackData
+from keyboards.inline_keyboards import create_beers_keyboard, create_delete_keyboard
 from keyboards.keyboards import navigation_kb
 
 from lexicon.lexicon import LEXICON, LEXICON_MENU
@@ -188,3 +188,35 @@ async def process_beer_press(callback: CallbackQuery, session: AsyncSession):
                 f'Цена: {beer.price}'
     )
 
+
+# Этот хэндлер будет срабатывать на нажатие инлайн-кнопки
+# "редактировать" под списком закладок
+@router.callback_query(F.data == 'delete')
+async def process_delete_press(callback: CallbackQuery, session: AsyncSession):
+    repository_beer = RepositoryBeer(session)
+    result_beers = await repository_beer.get_all()
+    name_beers = {}
+    for beer in result_beers:
+        beer_name = f'{beer.name}. Цена: {beer.price} руб.'
+        name_beers.update({beer.id: beer_name})
+    await callback.message.edit_text(
+        text=LEXICON[callback.data],
+        reply_markup=create_delete_keyboard(name_beers)
+    )
+    await callback.answer()
+
+
+@router.callback_query(IsDelBookmarkCallbackData())
+async def process_del_beer_press(callback: CallbackQuery, session: AsyncSession):
+    repository_beer = RepositoryBeer(session)
+    await repository_beer.delete_by_id(int(callback.data[:-3]))
+    result_beers = await repository_beer.get_all()
+    name_beers = {}
+    for beer in result_beers:
+        beer_name = f'{beer.name}. Цена: {beer.price} руб.'
+        name_beers.update({beer.id: beer_name})
+    await callback.message.edit_text(
+        text=LEXICON['list_beer'],
+        reply_markup=create_delete_keyboard(name_beers)
+    )
+    await callback.answer()
