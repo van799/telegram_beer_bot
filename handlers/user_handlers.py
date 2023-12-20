@@ -209,14 +209,19 @@ async def process_delete_press(callback: CallbackQuery, session: AsyncSession):
 @router.callback_query(IsDelBookmarkCallbackData())
 async def process_del_beer_press(callback: CallbackQuery, session: AsyncSession):
     repository_beer = RepositoryBeer(session)
-    await repository_beer.delete_by_id(int(callback.data[:-3]))
-    result_beers = await repository_beer.get_all()
-    name_beers = {}
-    for beer in result_beers:
-        beer_name = f'{beer.name}. Цена: {beer.price} руб.'
-        name_beers.update({beer.id: beer_name})
-    await callback.message.edit_text(
-        text=LEXICON['list_beer'],
-        reply_markup=create_delete_keyboard(name_beers)
-    )
-    await callback.answer()
+    repository_user = RepositoryUser(session)
+    user = await repository_user.get_by_telegram_id(callback.from_user.id)
+    beer = await repository_beer.get_by_id(callback.data[:-3])
+    if user.id == beer.user_id:
+        await repository_beer.delete_by_id(int(callback.data[:-3]))
+        result_beers = await repository_beer.get_all()
+        name_beers = {}
+        for beer in result_beers:
+            beer_name = f'{beer.name}. Цена: {beer.price} руб.'
+            name_beers.update({beer.id: beer_name})
+        await callback.message.edit_text(
+            text=LEXICON['list_beer'],
+            reply_markup=create_delete_keyboard(name_beers)
+        )
+    else:
+        await callback.answer(text='Удалить можно только свой добавленый напиток')
