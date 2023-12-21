@@ -7,6 +7,9 @@ from aiogram.utils.callback_answer import CallbackAnswerMiddleware
 from config_data.config import app_settings
 from database.database import Database
 from handlers import other_handlers, user_handlers
+from handlers.add_beer_hendler import add_beer_hendler
+from handlers.menu_hendler import menu_hendler
+
 from keyboards.main_menu import set_main_menu
 from middlewares.db import DbSessionMiddleware
 
@@ -34,7 +37,8 @@ async def main():
     await set_main_menu(bot)
 
     # Регистриуем роутеры в диспетчере
-    dp.include_router(user_handlers.router)
+    dp.include_router(add_beer_hendler.router)
+    dp.include_router(menu_hendler.router)
     dp.include_router(other_handlers.router)
 
     # создаем БД
