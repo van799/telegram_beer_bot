@@ -9,7 +9,7 @@ class AppSettings(BaseSettings):
     debug: str = Field('True', env='DEBUG')
 
     bot_token: str = Field('INFO', env='BOT_TOKEN')
-    admin_ids: str = Field('111111', env='ADMIN_IDS')
+    admin_pass: str = Field('1234567', env='ADMIN_PASS')
 
 
 app_settings = AppSettings()

@@ -10,7 +10,7 @@ from database.models import Base
 
 class Database:
     def __init__(self, ):
-        if app_settings.debug == True:
+        if app_settings.debug == 'True':
             self.path = f'sql_app_{hash(time.time())}.db'
             self.SQLALCHEMY_DATABASE_URL = f"sqlite+aiosqlite:///./{self.path}"
 
@@ -25,7 +25,7 @@ class Database:
 
     async def create_session(self):
         # debug=True создание новой БД, debug=False соединение с БД
-        if app_settings.debug == True:
+        if app_settings.debug == 'True':
             await self.metadate_create_all()
         return AsyncSession(self.engine)
 

@@ -10,6 +10,7 @@ class User(Base):
     __tablename__ = "users"
     id: Mapped[int] = mapped_column(primary_key=True)
     telegram_id: Mapped[int] = mapped_column()
+    admin: Mapped[bool] = mapped_column(default=False)
     beer: Mapped["Beer"] = relationship(back_populates='user', uselist=False)
 
 

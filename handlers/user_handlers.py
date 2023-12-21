@@ -5,6 +5,7 @@ from aiogram.fsm.state import default_state
 from aiogram.types import Message, PhotoSize, CallbackQuery
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from config_data.config import app_settings
 from database.models import User, Beer
 from filters.filters import IsDigitCallbackData, IsDelBookmarkCallbackData
 from keyboards.inline_keyboards import create_beers_keyboard, create_delete_keyboard
@@ -14,6 +15,7 @@ from lexicon.lexicon import LEXICON, LEXICON_MENU
 from repository.repository_beer import RepositoryBeer
 from repository.repository_user import RepositoryUser
 from state_machine.add_beer import FsmBeerForm
+from state_machine.admin_pass import FsmAdminForm
 
 router = Router()
 
@@ -43,6 +45,26 @@ async def process_menu_command(message: Message):
 async def process_help_command(message: Message):
     await message.answer(LEXICON_MENU[message.text])
 
+
+# Этот хэндлер будет срабатывать на команду "/admin"
+@router.message(Command(commands='admin'), StateFilter(default_state))
+async def process_help_command(message: Message, state: FSMContext):
+    await message.answer("Введите пароль администратора:")
+    await state.set_state(FsmAdminForm.wait_pass)
+
+
+# Этот хэндлер будет срабатывать, если введенн пароль
+@router.message(StateFilter(FsmAdminForm.wait_pass))
+async def process_add_name(message: Message, session: AsyncSession, state: FSMContext):
+    if message.text in app_settings.admin_pass:
+        repository_user = RepositoryUser(session)
+        user = await repository_user.get_by_telegram_id(int(message.from_user.id))
+        user.admin = True
+        await repository_user.add(user)
+        await message.answer("Вы стали администратором:")
+    else:
+        await message.answer("Пароль не верный")
+    await state.clear()
 
 # Этот хэндлер будет срабатывать на команду add_beer вне состояний
 # и предлагать перейти к добовлению пива
@@ -153,7 +175,7 @@ async def process_price(message: Message, state: FSMContext, session: AsyncSessi
     await message.answer(text=LEXICON['save_beer'])
 
 
-@router.message(F.text == LEXICON['view_beer'], StateFilter(default_state))
+@router.message(F.text == LEXICON['view_beer'])
 async def process_view_beer(message: Message, session: AsyncSession):
     # Отправляем пользователю инофрмацию, если она есть в "базе данных"
     repository_beer = RepositoryBeer(session)
@@ -212,7 +234,7 @@ async def process_del_beer_press(callback: CallbackQuery, session: AsyncSession)
     repository_user = RepositoryUser(session)
     user = await repository_user.get_by_telegram_id(callback.from_user.id)
     beer = await repository_beer.get_by_id(callback.data[:-3])
-    if user.id == beer.user_id:
+    if user.id == beer.user_id or user.admin is True:
         await repository_beer.delete_by_id(int(callback.data[:-3]))
         result_beers = await repository_beer.get_all()
         name_beers = {}
