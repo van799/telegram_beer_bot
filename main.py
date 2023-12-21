@@ -6,7 +6,7 @@ from aiogram.utils.callback_answer import CallbackAnswerMiddleware
 
 from config_data.config import app_settings
 from database.database import Database
-from handlers import other_handlers, user_handlers
+from handlers import other_handlers
 from handlers.add_beer_hendler import add_beer_hendler
 from handlers.menu_hendler import menu_hendler
 
