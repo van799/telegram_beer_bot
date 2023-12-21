@@ -16,14 +16,10 @@ def create_beers_keyboard(args: dict) -> InlineKeyboardMarkup:
     # Добавляем в клавиатуру в конце две кнопки "Редактировать" и "Отменить"
     kb_builder.row(
         InlineKeyboardButton(
-            text=LEXICON['edit'],
-            callback_data='edit_beer'
-        ),
-        InlineKeyboardButton(
             text=LEXICON['delete'],
             callback_data='delete'
         ),
-        width=2
+        width=1
     )
     return kb_builder.as_markup()
 

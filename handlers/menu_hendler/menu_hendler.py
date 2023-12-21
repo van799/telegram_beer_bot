@@ -26,14 +26,14 @@ async def process_start_command(message: Message, session: AsyncSession):
     if await repository_user.get_by_telegram_id(message.from_user.id) is None:
         user.telegram_id = message.from_user.id
         await repository_user.add(user)
-    await message.answer(LEXICON_TEXT[message.text], reply_markup=navigation_kb)
+    await message.answer(LEXICON_TEXT[message.text[0:6]], reply_markup=navigation_kb)
 
 
 # Этот хэндлер будет срабатывать на команду "/help"
 # и отправлять пользователю сообщение со списком доступных команд в боте
 @router.message(Command(commands='help'))
 async def process_help_command(message: Message):
-    await message.answer(LEXICON_TEXT[message.text])
+    await message.answer(LEXICON_TEXT[message.text[0:5]])
 
 
 # Этот хэндлер будет срабатывать на команду "/admin"

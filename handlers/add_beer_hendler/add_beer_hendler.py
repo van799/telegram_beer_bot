@@ -31,7 +31,7 @@ async def process_add_beer_command(message: Message, state: FSMContext):
 @router.message(Command(commands='cancel'), StateFilter(default_state))
 async def process_cancel_command(message: Message):
     await message.answer(
-        text=LEXICON['cancel_add_beer']
+        text=LEXICON['cancel_null']
     )
 
 
