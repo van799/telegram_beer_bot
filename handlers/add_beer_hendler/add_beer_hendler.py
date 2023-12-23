@@ -9,9 +9,10 @@ from database.models import Beer
 from filters.filters import IsDigitCallbackData, IsDelBookmarkCallbackData
 from keyboards.inline_keyboards import create_beers_keyboard, create_delete_keyboard
 
-from lexicon.lexicon import LEXICON
+from lexicon.lexicon import LEXICON, LEXICON_MENU
 from repository.repository_beer import RepositoryBeer
 from repository.repository_user import RepositoryUser
+from service.check_register import RegisterUser
 from state_machine.add_beer import FsmBeerForm
 
 router = Router()
@@ -20,10 +21,14 @@ router = Router()
 # Этот хэндлер будет срабатывать на команду add_beer вне состояний
 # и предлагать перейти к добовлению пива
 @router.message(F.text == LEXICON['add_beer'], StateFilter(default_state))
-async def process_add_beer_command(message: Message, state: FSMContext):
-    await message.answer(LEXICON['add_name'])
-    # Устанавливаем состояние ожидания ввода имени
-    await state.set_state(FsmBeerForm.add_name)
+async def process_add_beer_command(message: Message, state: FSMContext, session: AsyncSession):
+    register_user = RegisterUser(message.from_user.id, session)
+    if await register_user.check_register() is False:
+        await message.answer(LEXICON['not_user'])
+    else:
+        await message.answer(LEXICON['add_name'])
+        # Устанавливаем состояние ожидания ввода имени
+        await state.set_state(FsmBeerForm.add_name)
 
 
 # Этот хэндлер будет срабатывать на команду "/cancel" в состоянии
@@ -128,73 +133,89 @@ async def process_price(message: Message, state: FSMContext, session: AsyncSessi
 
 @router.message(F.text == LEXICON['view_beer'])
 async def process_view_beer(message: Message, session: AsyncSession):
-    # Отправляем пользователю инофрмацию, если она есть в "базе данных"
-    repository_beer = RepositoryBeer(session)
-    result_beers = await repository_beer.get_all()
-    if not result_beers:
-        # Если анкеты пользователя в базе нет - предлагаем заполнить
-        await message.answer(
-            text=LEXICON['not_beer']
-        )
+    register_user = RegisterUser(message.from_user.id, session)
+    if await register_user.check_register() is False:
+        await message.answer(LEXICON['not_user'])
     else:
-        name_beers = {}
-        for beer in result_beers:
-            beer_name = f'{beer.name}. Цена: {beer.price} руб.'
-            name_beers.update({beer.id: beer_name})
-        await message.answer(
-            text=LEXICON['list_beer'],
-            reply_markup=create_beers_keyboard(name_beers))
+        # Отправляем пользователю инофрмацию, если она есть в "базе данных"
+        repository_beer = RepositoryBeer(session)
+        result_beers = await repository_beer.get_all()
+        if not result_beers:
+            # Если анкеты пользователя в базе нет - предлагаем заполнить
+            await message.answer(
+                text=LEXICON['not_beer']
+            )
+        else:
+            name_beers = {}
+            for beer in result_beers:
+                beer_name = f'{beer.name}. Цена: {beer.price} руб.'
+                name_beers.update({beer.id: beer_name})
+            await message.answer(
+                text=LEXICON['list_beer'],
+                reply_markup=create_beers_keyboard(name_beers))
 
 
 # Этот хэндлер будет срабатывать на нажатие инлайн-кнопки
 # с названием напитка из списка
 @router.callback_query(IsDigitCallbackData())
 async def process_beer_press(callback: CallbackQuery, session: AsyncSession):
-    repository_beer = RepositoryBeer(session)
-    beer = await repository_beer.get_by_id(int(callback.data))
-    await callback.message.answer_photo(
-        photo=beer.photo_id,
-        caption=f'Название: {beer.name}\n'
-                f'Сорт напитка: {beer.sort_beer_id}\n'
-                f'отзыв: {beer.comment}\n'
-                f'Рейтинг: {beer.rating}\n'
-                f'Цена: {beer.price}'
-    )
+    register_user = RegisterUser(callback.from_user.id, session)
+    if await register_user.check_register() is False:
+        await callback.answer(LEXICON['not_user'])
+    else:
+        repository_beer = RepositoryBeer(session)
+        beer = await repository_beer.get_by_id(int(callback.data))
+        await callback.message.answer_photo(
+            photo=beer.photo_id,
+            caption=f'Название: {beer.name}\n'
+                    f'Сорт напитка: {beer.sort_beer_id}\n'
+                    f'отзыв: {beer.comment}\n'
+                    f'Рейтинг: {beer.rating}\n'
+                    f'Цена: {beer.price}'
+        )
 
 
 # Этот хэндлер будет срабатывать на нажатие инлайн-кнопки
 # "редактировать" под списком закладок
 @router.callback_query(F.data == 'delete')
 async def process_delete_press(callback: CallbackQuery, session: AsyncSession):
-    repository_beer = RepositoryBeer(session)
-    result_beers = await repository_beer.get_all()
-    name_beers = {}
-    for beer in result_beers:
-        beer_name = f'{beer.name}. Цена: {beer.price} руб.'
-        name_beers.update({beer.id: beer_name})
-    await callback.message.edit_text(
-        text=LEXICON[callback.data],
-        reply_markup=create_delete_keyboard(name_beers)
-    )
-    await callback.answer()
-
-
-@router.callback_query(IsDelBookmarkCallbackData())
-async def process_del_beer_press(callback: CallbackQuery, session: AsyncSession):
-    repository_beer = RepositoryBeer(session)
-    repository_user = RepositoryUser(session)
-    user = await repository_user.get_by_telegram_id(callback.from_user.id)
-    beer = await repository_beer.get_by_id(callback.data[:-3])
-    if user.id == beer.user_id or user.admin is True:
-        await repository_beer.delete_by_id(int(callback.data[:-3]))
+    register_user = RegisterUser(callback.from_user.id, session)
+    if await register_user.check_register() is False:
+        await callback.answer(LEXICON['not_user'])
+    else:
+        repository_beer = RepositoryBeer(session)
         result_beers = await repository_beer.get_all()
         name_beers = {}
         for beer in result_beers:
             beer_name = f'{beer.name}. Цена: {beer.price} руб.'
             name_beers.update({beer.id: beer_name})
         await callback.message.edit_text(
-            text=LEXICON['list_beer'],
+            text=LEXICON[callback.data],
             reply_markup=create_delete_keyboard(name_beers)
         )
+        await callback.answer()
+
+
+@router.callback_query(IsDelBookmarkCallbackData())
+async def process_del_beer_press(callback: CallbackQuery, session: AsyncSession):
+    register_user = RegisterUser(callback.from_user.id, session)
+    if await register_user.check_register() is False:
+        await callback.answer(LEXICON['not_user'])
     else:
-        await callback.answer(text='Удалить можно только свой добавленый напиток')
+        repository_beer = RepositoryBeer(session)
+        repository_user = RepositoryUser(session)
+        user = await repository_user.get_by_telegram_id(callback.from_user.id)
+        beer = await repository_beer.get_by_id(callback.data[:-3])
+        if user.id == beer.user_id or user.admin is True:
+            await repository_beer.delete_by_id(int(callback.data[:-3]))
+            result_beers = await repository_beer.get_all()
+            name_beers = {}
+            for beer in result_beers:
+                beer_name = f'{beer.name}. Цена: {beer.price} руб.'
+                name_beers.update({beer.id: beer_name})
+            await callback.message.edit_text(
+                text=LEXICON['list_beer'],
+                reply_markup=create_delete_keyboard(name_beers)
+            )
+        else:
+            await callback.answer(text='Удалить можно только свой добавленый напиток')

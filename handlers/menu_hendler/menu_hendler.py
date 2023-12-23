@@ -9,8 +9,9 @@ from config_data.config import app_settings
 from database.models import User
 from keyboards.keyboards import navigation_kb
 
-from lexicon.lexicon import LEXICON_MENU, LEXICON_TEXT
+from lexicon.lexicon import LEXICON_MENU, LEXICON_TEXT, LEXICON
 from repository.repository_user import RepositoryUser
+from service.check_register import RegisterUser
 from state_machine.admin_pass import FsmAdminForm
 
 router = Router()
@@ -21,43 +22,45 @@ router = Router()
 # и отправлять ему приветственное сообщение
 @router.message(CommandStart())
 async def process_start_command(message: Message, session: AsyncSession):
-    repository_user = RepositoryUser(session)
-    user = User()
-    if await repository_user.get_by_telegram_id(message.from_user.id) is None:
-        user.telegram_id = message.from_user.id
-        await repository_user.add(user)
-    await message.answer(LEXICON_TEXT[message.text[0:6]], reply_markup=navigation_kb)
+    register_user = RegisterUser(message.from_user.id, session)
+    if await register_user.check_register() is False:
+        await register_user.register()
+        await message.answer(LEXICON_TEXT[message.text[0:6]], reply_markup=navigation_kb)
+    else:
+        await message.answer(LEXICON['already_authorized'], reply_markup=navigation_kb)
 
 
 # Этот хэндлер будет срабатывать на команду "/help"
 # и отправлять пользователю сообщение со списком доступных команд в боте
 @router.message(Command(commands='help'))
-async def process_help_command(message: Message):
-    await message.answer(LEXICON_TEXT[message.text[0:5]])
+async def process_help_command(message: Message, session: AsyncSession):
+    register_user = RegisterUser(message.from_user.id, session)
+    if await register_user.check_register() is False:
+        await message.answer(LEXICON['not_user'])
+    else:
+        await message.answer(LEXICON_TEXT[message.text[0:5]])
 
 
 # Этот хэндлер будет срабатывать на команду "/admin"
 @router.message(Command(commands='admin'), StateFilter(default_state))
 async def process_help_command(message: Message, state: FSMContext, session: AsyncSession):
-    repository_user = RepositoryUser(session)
-    user = await repository_user.get_by_telegram_id(int(message.from_user.id))
-    if user.admin is True:
-        await message.answer(LEXICON_TEXT['admin'])
-        await state.clear()
+    register_user = RegisterUser(message.from_user.id, session)
+    if await register_user.check_register() is False:
+        await message.answer(LEXICON['not_user'])
+    elif await register_user.check_admin() is True:
+        await message.answer(LEXICON['admin'])
     else:
-        await message.answer(LEXICON_TEXT['input_password'])
+        await message.answer(LEXICON['input_password'])
         await state.set_state(FsmAdminForm.wait_pass)
 
 
 # Этот хэндлер будет срабатывать, если введенн пароль
 @router.message(StateFilter(FsmAdminForm.wait_pass))
-async def process_add_name(message: Message, session: AsyncSession, state: FSMContext):
-    if message.text == app_settings.admin_pass:
-        repository_user = RepositoryUser(session)
-        user = await repository_user.get_by_telegram_id(int(message.from_user.id))
-        user.admin = True
-        await repository_user.add(user)
-        await message.answer(LEXICON_TEXT['admin_successful'])
+async def process_admin_authorization(message: Message, session: AsyncSession, state: FSMContext):
+    register_user = RegisterUser(message.from_user.id, session)
+    result_admin_authorization = await register_user.register_admin(message.text)
+    if result_admin_authorization is True:
+        await message.answer(LEXICON['admin_successful'])
     else:
-        await message.answer(LEXICON_TEXT['wrong_password'])
+        await message.answer(LEXICON['wrong_password'])
     await state.clear()
