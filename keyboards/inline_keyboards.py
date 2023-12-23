@@ -13,7 +13,7 @@ def create_beers_keyboard(args: dict) -> InlineKeyboardMarkup:
             text=f'{key} - {value}',
             callback_data=str(key)
         ))
-    # Добавляем в клавиатуру в конце две кнопки "Редактировать" и "Отменить"
+    # Добавляем в клавиатуру в конце две кнопки "Редактировать"
     kb_builder.row(
         InlineKeyboardButton(
             text=LEXICON['delete'],
@@ -33,5 +33,12 @@ def create_delete_keyboard(args: dict) -> InlineKeyboardMarkup:
             text=f'{LEXICON["del"]} {key} - {value}',
             callback_data=f'{key}del'
         ))
+    kb_builder.row(
+        InlineKeyboardButton(
+            text=LEXICON['cancel'],
+            callback_data='cancel'
+        ),
+        width=1
+    )
     return kb_builder.as_markup()
 

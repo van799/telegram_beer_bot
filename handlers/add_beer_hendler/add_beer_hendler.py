@@ -6,6 +6,7 @@ from aiogram.types import Message, PhotoSize, CallbackQuery
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from database.models import Beer
+from filters.chat_type import ChatTypeFilter
 from filters.filters import IsDigitCallbackData, IsDelBookmarkCallbackData
 from keyboards.inline_keyboards import create_beers_keyboard, create_delete_keyboard
 
@@ -20,7 +21,8 @@ router = Router()
 
 # Этот хэндлер будет срабатывать на команду add_beer вне состояний
 # и предлагать перейти к добовлению пива
-@router.message(F.text == LEXICON['add_beer'], StateFilter(default_state))
+
+@router.message(ChatTypeFilter(chat_type=["private"]), F.text == LEXICON['add_beer'], StateFilter(default_state))
 async def process_add_beer_command(message: Message, state: FSMContext, session: AsyncSession):
     register_user = RegisterUser(message.from_user.id, session)
     if await register_user.check_register() is False:
@@ -33,7 +35,7 @@ async def process_add_beer_command(message: Message, state: FSMContext, session:
 
 # Этот хэндлер будет срабатывать на команду "/cancel" в состоянии
 # по умолчанию и сообщать, что эта команда работает внутри машины состояний
-@router.message(Command(commands='cancel'), StateFilter(default_state))
+@router.message(ChatTypeFilter(chat_type=["private"]), Command(commands='cancel'), StateFilter(default_state))
 async def process_cancel_command(message: Message):
     await message.answer(
         text=LEXICON['cancel_null']
@@ -42,7 +44,7 @@ async def process_cancel_command(message: Message):
 
 # Этот хэндлер будет срабатывать на команду "/cancel" в любых состояниях,
 # кроме состояния по умолчанию, и отключать машину состояний
-@router.message(Command(commands='cancel'), ~StateFilter(default_state))
+@router.message(ChatTypeFilter(chat_type=["private"]), Command(commands='cancel'), ~StateFilter(default_state))
 async def process_cancel_command_state(message: Message, state: FSMContext):
     await message.answer(
         text=LEXICON['cancel_add_beer'])
@@ -194,6 +196,12 @@ async def process_delete_press(callback: CallbackQuery, session: AsyncSession):
             reply_markup=create_delete_keyboard(name_beers)
         )
         await callback.answer()
+
+
+@router.callback_query(F.data == 'cancel')
+async def process_cancel_press(callback: CallbackQuery):
+    await callback.message.edit_text(text=LEXICON['cancel'])
+    await callback.answer()
 
 
 @router.callback_query(IsDelBookmarkCallbackData())

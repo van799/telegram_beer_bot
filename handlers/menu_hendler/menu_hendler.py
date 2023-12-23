@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from config_data.config import app_settings
 from database.models import User
+from filters.chat_type import ChatTypeFilter
 from keyboards.keyboards import navigation_kb
 
 from lexicon.lexicon import LEXICON_MENU, LEXICON_TEXT, LEXICON
@@ -15,6 +16,9 @@ from service.check_register import RegisterUser
 from state_machine.admin_pass import FsmAdminForm
 
 router = Router()
+router.message.filter(
+    ChatTypeFilter(chat_type=["private"])
+)
 
 
 # Этот хэндлер будет срабатывать на команду "/start" -
