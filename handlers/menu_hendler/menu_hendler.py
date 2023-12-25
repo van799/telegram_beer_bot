@@ -13,6 +13,7 @@ from keyboards.keyboards import navigation_kb
 from lexicon.lexicon import LEXICON_MENU, LEXICON_TEXT, LEXICON
 from repository.repository_user import RepositoryUser
 from service.check_register import RegisterUser
+from service.register_admin import RegisterAdmin
 from state_machine.admin_pass import FsmAdminForm
 
 router = Router()
@@ -26,7 +27,7 @@ router.message.filter(
 # и отправлять ему приветственное сообщение
 @router.message(CommandStart())
 async def process_start_command(message: Message, session: AsyncSession):
-    register_user = RegisterUser(message.from_user.id, session)
+    register_user = RegisterUser(message, session)
     if await register_user.check_register() is False:
         await register_user.register()
         await message.answer(LEXICON_TEXT[message.text[0:6]], reply_markup=navigation_kb)
@@ -38,7 +39,7 @@ async def process_start_command(message: Message, session: AsyncSession):
 # и отправлять пользователю сообщение со списком доступных команд в боте
 @router.message(Command(commands='help'))
 async def process_help_command(message: Message, session: AsyncSession):
-    register_user = RegisterUser(message.from_user.id, session)
+    register_user = RegisterUser(message, session)
     if await register_user.check_register() is False:
         await message.answer(LEXICON['not_user'])
     else:
@@ -48,10 +49,11 @@ async def process_help_command(message: Message, session: AsyncSession):
 # Этот хэндлер будет срабатывать на команду "/admin"
 @router.message(Command(commands='admin'), StateFilter(default_state))
 async def process_help_command(message: Message, state: FSMContext, session: AsyncSession):
-    register_user = RegisterUser(message.from_user.id, session)
+    register_user = RegisterUser(message, session)
+    register_admin = RegisterAdmin(message, session)
     if await register_user.check_register() is False:
         await message.answer(LEXICON['not_user'])
-    elif await register_user.check_admin() is True:
+    elif await register_admin.check_admin() is True:
         await message.answer(LEXICON['admin'])
     else:
         await message.answer(LEXICON['input_password'])
@@ -61,8 +63,8 @@ async def process_help_command(message: Message, state: FSMContext, session: Asy
 # Этот хэндлер будет срабатывать, если введенн пароль
 @router.message(StateFilter(FsmAdminForm.wait_pass))
 async def process_admin_authorization(message: Message, session: AsyncSession, state: FSMContext):
-    register_user = RegisterUser(message.from_user.id, session)
-    result_admin_authorization = await register_user.register_admin(message.text)
+    register_admin = RegisterAdmin(message, session)
+    result_admin_authorization = await register_admin.authorization_admin(message.text)
     if result_admin_authorization is True:
         await message.answer(LEXICON['admin_successful'])
     else:

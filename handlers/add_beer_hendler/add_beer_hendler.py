@@ -5,7 +5,7 @@ from aiogram.fsm.state import default_state
 from aiogram.types import Message, PhotoSize, CallbackQuery
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from database.models import Beer
+from database.models import Beer, User
 from filters.chat_type import ChatTypeFilter
 from filters.filters import IsDigitCallbackData, IsDelBookmarkCallbackData
 from keyboards.inline_keyboards import create_beers_keyboard, create_delete_keyboard
@@ -24,7 +24,7 @@ router = Router()
 
 @router.message(ChatTypeFilter(chat_type=["private"]), F.text == LEXICON['add_beer'], StateFilter(default_state))
 async def process_add_beer_command(message: Message, state: FSMContext, session: AsyncSession):
-    register_user = RegisterUser(message.from_user.id, session)
+    register_user = RegisterUser(message, session)
     if await register_user.check_register() is False:
         await message.answer(LEXICON['not_user'])
     else:
@@ -96,18 +96,28 @@ async def process_comment(message: Message, state: FSMContext):
     await state.set_state(FsmBeerForm.rating)
 
 
-@router.message(StateFilter(FsmBeerForm.rating))
+@router.message(StateFilter(FsmBeerForm.rating),
+                lambda x: x.text.isdigit() and 0 <= int(x.text) <= 10)
 async def process_rating(message: Message, state: FSMContext):
-    # Cохраняем введенное имя в хранилище по ключу "name"
+    # Cохраняем введенное имя в хранилище по ключу "rating"
     await state.update_data(rating=message.text)
     await message.answer(text=LEXICON['price'])
     # Устанавливаем состояние ожидания ввода изображения
     await state.set_state(FsmBeerForm.price)
 
 
-@router.message(StateFilter(FsmBeerForm.price))
+# Этот хэндлер будет срабатывать, введен неверный рейтинг
+@router.message(StateFilter(FsmBeerForm.rating))
+async def warning_rating(message: Message):
+    await message.answer(
+        text=LEXICON['warning_rating']
+    )
+
+
+@router.message(StateFilter(FsmBeerForm.price),
+                lambda x: x.text.isdigit() and 0 <= int(x.text) <= 10000)
 async def process_price(message: Message, state: FSMContext, session: AsyncSession):
-    # Cохраняем введенное имя в хранилище по ключу "name"
+    # Cохраняем введенное имя в хранилище по ключу "price"
     await state.update_data(price=message.text)
     await state.set_state(FsmBeerForm.rating)
 
@@ -133,24 +143,34 @@ async def process_price(message: Message, state: FSMContext, session: AsyncSessi
     await message.answer(text=LEXICON['save_beer'])
 
 
+@router.message(StateFilter(FsmBeerForm.price))
+async def warning_rating(message: Message):
+    await message.answer(
+        text=LEXICON['warning_price']
+    )
+
+
 @router.message(F.text == LEXICON['view_beer'])
 async def process_view_beer(message: Message, session: AsyncSession):
-    register_user = RegisterUser(message.from_user.id, session)
+    register_user = RegisterUser(message, session)
     if await register_user.check_register() is False:
         await message.answer(LEXICON['not_user'])
     else:
         # Отправляем пользователю инофрмацию, если она есть в "базе данных"
         repository_beer = RepositoryBeer(session)
+        repository_user = RepositoryUser(session)
         result_beers = await repository_beer.get_all()
+
         if not result_beers:
-            # Если анкеты пользователя в базе нет - предлагаем заполнить
+            # Если данных в базе нет
             await message.answer(
                 text=LEXICON['not_beer']
             )
         else:
             name_beers = {}
             for beer in result_beers:
-                beer_name = f'{beer.name}. Цена: {beer.price} руб.'
+                user: User = await repository_user.get_by_id(beer.user_id)
+                beer_name = f'{beer.name}. Цена: {beer.price} руб. Добавил {user.first_name}'
                 name_beers.update({beer.id: beer_name})
             await message.answer(
                 text=LEXICON['list_beer'],
@@ -161,7 +181,7 @@ async def process_view_beer(message: Message, session: AsyncSession):
 # с названием напитка из списка
 @router.callback_query(IsDigitCallbackData())
 async def process_beer_press(callback: CallbackQuery, session: AsyncSession):
-    register_user = RegisterUser(callback.from_user.id, session)
+    register_user = RegisterUser(callback, session)
     if await register_user.check_register() is False:
         await callback.answer(LEXICON['not_user'])
     else:
@@ -181,7 +201,7 @@ async def process_beer_press(callback: CallbackQuery, session: AsyncSession):
 # "редактировать" под списком закладок
 @router.callback_query(F.data == 'delete')
 async def process_delete_press(callback: CallbackQuery, session: AsyncSession):
-    register_user = RegisterUser(callback.from_user.id, session)
+    register_user = RegisterUser(callback, session)
     if await register_user.check_register() is False:
         await callback.answer(LEXICON['not_user'])
     else:
@@ -206,7 +226,7 @@ async def process_cancel_press(callback: CallbackQuery):
 
 @router.callback_query(IsDelBookmarkCallbackData())
 async def process_del_beer_press(callback: CallbackQuery, session: AsyncSession):
-    register_user = RegisterUser(callback.from_user.id, session)
+    register_user = RegisterUser(callback, session)
     if await register_user.check_register() is False:
         await callback.answer(LEXICON['not_user'])
     else:
