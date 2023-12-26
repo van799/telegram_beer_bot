@@ -14,6 +14,7 @@ class TestRepositoryUser(unittest.IsolatedAsyncioTestCase):
         test_user = User()
 
         test_user.telegram_id = 11111
+        test_user.first_name = 'test_first_name'
 
         test_beer.price = 20
         test_beer.user_id = 1
@@ -36,7 +37,7 @@ class TestRepositoryUser(unittest.IsolatedAsyncioTestCase):
             repository_beer = RepositoryBeer(session)
             result = await repository_beer.get_all()
 
-        self.assertEqual(result.name, test_beer.name)
+        self.assertEqual(result[0].name, test_beer.name)
         test_database.remove_database_file()
 
     async def test_repository_get_all_many(self):
@@ -46,6 +47,7 @@ class TestRepositoryUser(unittest.IsolatedAsyncioTestCase):
         test_user = User()
 
         test_user.telegram_id = 11111
+        test_user.first_name = 'test_first_name'
         # beer 1
         test_beer1.price = 20
         test_beer1.user_id = 1
@@ -81,4 +83,46 @@ class TestRepositoryUser(unittest.IsolatedAsyncioTestCase):
             result = await repository_beer.get_all()
 
         self.assertEqual(result[1].name, test_beer2.name)
+        test_database.remove_database_file()
+
+    async def test_repository_search_name(self):
+        test_database = TestDatabase()
+        test_beer1 = Beer()
+        test_beer2 = Beer()
+        test_user = User()
+
+        test_user.telegram_id = 11111
+        test_user.first_name = 'test_first_name'
+        # beer 1
+        test_beer1.price = 20
+        test_beer1.user_id = 1
+        test_beer1.photo_id = 1
+        test_beer1.rating = 10
+        test_beer1.name = 'Not_search_beer'
+        test_beer1.sort_beer_id = 1
+        test_beer1.comment = 'test comment'
+        # beer 2
+        test_beer2.price = 30
+        test_beer2.user_id = 1
+        test_beer2.photo_id = 2
+        test_beer2.rating = 9
+        test_beer2.name = 'test_beer_2'
+        test_beer2.sort_beer_id = 1
+        test_beer2.comment = 'test comment_2'
+
+        await test_database.create_session()
+
+        async with test_database.async_session() as session:
+            repository_user = RepositoryUser(session)
+            repository_beer = RepositoryBeer(session)
+
+            await repository_user.add(test_user)
+            await repository_beer.add(test_beer1)
+            await repository_beer.add(test_beer2)
+
+        async with test_database.async_session() as session:
+            repository_beer = RepositoryBeer(session)
+            result = await repository_beer.search_name('test_beer')
+
+        self.assertEqual(result.name, test_beer2.name)
         test_database.remove_database_file()

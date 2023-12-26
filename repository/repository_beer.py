@@ -16,3 +16,8 @@ class RepositoryBeer(RepositoryBase):
     async def get_all(self):
         result = await self.session.scalars(select(Beer))
         return result.all()
+
+    async def search_name(self, name: str):
+        result = await self.session.execute(
+            select(self.repository_type).where(self.repository_type.name.ilike('%' + name + '%')))
+        return result.scalar()

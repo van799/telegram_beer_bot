@@ -7,8 +7,9 @@ from aiogram.utils.callback_answer import CallbackAnswerMiddleware
 from config_data.config import app_settings
 from database.database import Database
 from handlers import other_handlers
-from handlers.add_beer_hendler import add_beer_hendler
+from handlers.add_view_beer_hendler import add_beer_hendler
 from handlers.menu_hendler import menu_hendler
+from handlers.serch_beer import serch_beer
 
 from keyboards.main_menu import set_main_menu
 from middlewares.db import DbSessionMiddleware
@@ -39,6 +40,7 @@ async def main():
     # Регистриуем роутеры в диспетчере
     dp.include_router(add_beer_hendler.router)
     dp.include_router(menu_hendler.router)
+    dp.include_router(serch_beer.router)
     dp.include_router(other_handlers.router)
 
     # создаем БД
